@@ -1,0 +1,23 @@
+# Tests — consumers don't need them, keep package small
+test/
+
+# Dart / build artifacts
+.dart_tool/
+build/
+.packages
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# AI / planning artifacts (internal)
+.claude/
+.planning/
+AGENTS.md
+CLAUDE.md
+ceres_wallet_onchain_PLAN.md
+
+# OS
+.DS_Store
+Thumbs.db
