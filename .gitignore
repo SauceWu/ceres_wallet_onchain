@@ -1,0 +1,21 @@
+# Dart
+.dart_tool/
+build/
+pubspec.lock
+.packages
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# AI / planning artifacts (internal, do not publish)
+.claude/
+.planning/
+AGENTS.md
+CLAUDE.md
+ceres_wallet_onchain_PLAN.md
+
+# OS
+.DS_Store
+Thumbs.db
