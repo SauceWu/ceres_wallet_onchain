@@ -22,6 +22,7 @@
 | **函数选择器** | keccak256 计算 4-byte selector |
 | **EIP-712 / EIP-191** | 解析 typed data → `TypedDataV4`，计算 32 字节 digest，供 MPC/签名消费 |
 | **Solana tx codec** | 解码/重编码 legacy + v0 交易 wire bytes，compact-u16，ALT 解析，ComputeBudget 识别 |
+| **交易历史（opt-in）** | 多链分页历史查询 — Solana、Sui、EVM Blockscout/Etherscan、TronGrid |
 | **统一异常模型** | `RpcException` 体系，自动重试与超时 |
 | **纯 Dart** | 无 Flutter 依赖，可在任意 Dart 环境使用 |
 
@@ -31,7 +32,7 @@
 
 ```yaml
 dependencies:
-  ceres_wallet_onchain: ^0.1.1
+  ceres_wallet_onchain: ^0.2.0
 ```
 
 ```bash
@@ -117,6 +118,35 @@ print('SUI 总余额：${balance.totalBalance}');
 
 client.close();
 ```
+
+---
+
+## 可选：交易历史查询（0.2.0 新增）
+
+交易历史层为**按需引入**，通过独立 barrel 导出，不影响主包导入，0.1.x 用户零成本升级。
+
+```dart
+import 'package:ceres_wallet_onchain/ceres_wallet_onchain.dart'; // 核心（不变）
+import 'package:ceres_wallet_onchain/tx_history.dart';            // 按需引入
+```
+
+| Provider | 数据源 |
+|----------|--------|
+| `SolanaNativeProvider` | Solana JSON-RPC `getSignaturesForAddress` + 批量 `getTransaction` |
+| `SuiNativeProvider` | Sui JSON-RPC `sui_queryTransactionBlocks` |
+| `EvmBlockscoutProvider` | Blockscout v2 REST (`/api/v2/addresses/.../transactions`) |
+| `EvmEtherscanProvider` | Etherscan v1 各链 host 或 v2 多链接口 |
+| `TronGridProvider` | TronGrid `/v1/accounts/{addr}/transactions` 及 TRC-20 |
+
+所有 Provider 实现统一的 `TxHistoryProvider<T>` 接口（`listTransactions`、`list`、`close`），并使用密封类 `TxHistoryCursor` 实现跨链编译期穷举。
+
+测试时可使用独立 barrel 提供的 `MockTxHistoryProvider<T>`：
+
+```dart
+import 'package:ceres_wallet_onchain/tx_history_testing.dart'; // 仅测试
+```
+
+完整示例见 [`example/tx_history_example.dart`](example/tx_history_example.dart)。
 
 ---
 

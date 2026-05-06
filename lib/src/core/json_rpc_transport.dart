@@ -39,8 +39,11 @@ import 'rpc_transport.dart';
 /// - **HTTP errors:** Throws [RpcHttpException] for non-2xx status codes.
 /// - **JSON-RPC errors:** Throws [RpcResponseException] when the response
 ///   contains an `error` object.
-/// - **Retry:** Automatically retries on timeout and 5xx errors up to
-///   [RpcClientConfig.maxRetries] times with exponential backoff.
+/// - **Retry:** Automatically retries on timeout, 5xx errors, and HTTP 429
+///   (rate-limited) up to [RpcClientConfig.maxRetries] times with
+///   exponential backoff. When a `Retry-After` response header is present
+///   (delta-seconds, capped at 30 seconds), it is honored in place of the
+///   exponential delay.
 /// - **Logging:** Calls [RpcClientConfig.logger] with request/response
 ///   entries when configured.
 class JsonRpcTransport implements RpcTransport {
@@ -142,17 +145,37 @@ class JsonRpcTransport implements RpcTransport {
       throw RpcHttpException(
         statusCode: response.statusCode,
         message: utf8.decode(response.bodyBytes),
+        retryAfter: _parseRetryAfter(response.headers),
       );
     }
 
     return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
   }
 
+  /// Parses the `Retry-After` header (RFC 7231 §7.1.3) from [headers].
+  ///
+  /// Returns `null` when the header is absent, negative, malformed, or in
+  /// HTTP-date format (only `delta-seconds` is honored).
+  ///
+  /// The result is capped at 30 seconds to guard against malicious or
+  /// misconfigured servers supplying a huge value that would stall the
+  /// client indefinitely.
+  Duration? _parseRetryAfter(Map<String, String> headers) {
+    final raw = headers['retry-after'];
+    if (raw == null) return null;
+    final seconds = int.tryParse(raw.trim());
+    if (seconds == null || seconds < 0) return null;
+    final capped = seconds > 30 ? 30 : seconds;
+    return Duration(seconds: capped);
+  }
+
   /// Executes [action] with retry logic for transient failures.
   ///
   /// Retries on [RpcTimeoutException] and [RpcHttpException] with
-  /// status code >= 500, up to [RpcClientConfig.maxRetries] times.
-  /// Uses exponential backoff capped at 30 seconds.
+  /// status code >= 500 OR exactly 429 (rate-limited), up to
+  /// [RpcClientConfig.maxRetries] times. When the offending response carried
+  /// a `Retry-After` header, the parsed delay (capped at 30s) is used in
+  /// place of exponential backoff.
   Future<T> _withRetry<T>(Future<T> Function() action) async {
     var attempt = 0;
     while (true) {
@@ -163,8 +186,13 @@ class JsonRpcTransport implements RpcTransport {
         await _backoff(attempt);
         attempt++;
       } on RpcHttpException catch (e) {
-        if (e.statusCode < 500 || attempt >= _config.maxRetries) rethrow;
-        await _backoff(attempt);
+        final retryable = e.statusCode >= 500 || e.statusCode == 429;
+        if (!retryable || attempt >= _config.maxRetries) rethrow;
+        if (e.retryAfter != null) {
+          await Future.delayed(e.retryAfter!);
+        } else {
+          await _backoff(attempt);
+        }
         attempt++;
       }
     }

@@ -106,9 +106,10 @@ Future<void> evmBscTestnetExample() async {
     // selector for name(): 0x06fdde03
     const nameSelector = '0x06fdde03';
     const wbnbTestnet = '0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd';
-    final hexResult = await client.call(
-      {'to': wbnbTestnet, 'data': nameSelector},
-    );
+    final hexResult = await client.call({
+      'to': wbnbTestnet,
+      'data': nameSelector,
+    });
     // ABI-decode the returned hex string as string type
     final resultBytes = _hexToBytes(hexResult);
     final decoded = AbiCoder.decode([AbiParam(type: 'string')], resultBytes);
@@ -241,8 +242,12 @@ Future<void> abiExample() async {
   print('=== ABI Encoding ===');
 
   // Compute 4-byte selector from function signature
-  final transferSelector = FunctionSelector.compute('transfer(address,uint256)');
-  final transferSelectorHex = FunctionSelector.computeHex('transfer(address,uint256)');
+  final transferSelector = FunctionSelector.compute(
+    'transfer(address,uint256)',
+  );
+  final transferSelectorHex = FunctionSelector.computeHex(
+    'transfer(address,uint256)',
+  );
   print('transfer sel    : 0x$transferSelectorHex');
 
   // Encode call parameters
@@ -265,26 +270,29 @@ Future<void> abiExample() async {
   // Encode and decode a tuple
   final tupleEncoded = AbiCoder.encode(
     [
-      AbiParam(type: 'tuple', components: [
-        AbiParam(type: 'uint256'),
-        AbiParam(type: 'bool'),
-        AbiParam(type: 'address'),
-      ]),
+      AbiParam(
+        type: 'tuple',
+        components: [
+          AbiParam(type: 'uint256'),
+          AbiParam(type: 'bool'),
+          AbiParam(type: 'address'),
+        ],
+      ),
     ],
     [
       [BigInt.from(42), true, '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'],
     ],
   );
-  final tupleDecoded = AbiCoder.decode(
-    [
-      AbiParam(type: 'tuple', components: [
+  final tupleDecoded = AbiCoder.decode([
+    AbiParam(
+      type: 'tuple',
+      components: [
         AbiParam(type: 'uint256'),
         AbiParam(type: 'bool'),
         AbiParam(type: 'address'),
-      ]),
-    ],
-    tupleEncoded,
-  );
+      ],
+    ),
+  ], tupleEncoded);
   print('Decoded tuple   : ${tupleDecoded[0]}'); // [42, true, 0xd8dA...]
 
   // Common pre-computed selectors
@@ -368,7 +376,7 @@ Future<void> eip191Example() async {
 Future<void> solanaTxCodecExample() async {
   print('=== Solana Transaction Codec ===');
 
-  final feePayer  = Uint8List(32)..fillRange(0, 32, 0x01);
+  final feePayer = Uint8List(32)..fillRange(0, 32, 0x01);
   final programId = Uint8List(32)..fillRange(0, 32, 0x02);
   final blockhash = Uint8List(32)..fillRange(0, 32, 0x03);
 

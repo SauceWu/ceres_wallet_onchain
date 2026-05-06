@@ -37,9 +37,7 @@ class AltResolver {
 
       final altData = accountInfo.data;
       if (altData.isEmpty) {
-        throw ArgumentError(
-          'ALT account has empty data: ${pubkeys[i]}',
-        );
+        throw ArgumentError('ALT account has empty data: ${pubkeys[i]}');
       }
       final encoding = altData.length >= 2 ? altData[1] : 'base64';
       if (encoding != 'base64') {

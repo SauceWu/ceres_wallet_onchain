@@ -54,6 +54,7 @@ export 'src/tron/tron_error.dart';
 // Solana RPC Client
 export 'src/solana/solana_rpc_client.dart';
 export 'src/solana/solana_address.dart';
+export 'src/solana/solana_pda.dart';
 export 'src/solana/solana_commitment.dart';
 export 'src/solana/codec/alt_resolver.dart';
 export 'src/solana/codec/compact_u16.dart';

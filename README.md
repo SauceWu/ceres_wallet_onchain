@@ -31,7 +31,7 @@ A pure Dart multi-chain RPC SDK covering **EVM / Tron / Solana / Sui** with comp
 
 ```yaml
 dependencies:
-  ceres_wallet_onchain: ^0.1.1
+  ceres_wallet_onchain: ^0.2.0
 ```
 
 ```bash
@@ -113,6 +113,49 @@ print('Total SUI: ${balance.totalBalance}');
 
 client.close();
 ```
+
+---
+
+## Optional: Transaction History
+
+Since 0.2.0 the package ships an **opt-in** transaction-history layer
+behind a separate barrel — it is NOT exported from the main package
+import, so existing 0.1.x users pay zero cost (no new dependencies,
+no main-barrel additions).
+
+```dart
+import 'package:ceres_wallet_onchain/ceres_wallet_onchain.dart'; // core (unchanged)
+import 'package:ceres_wallet_onchain/tx_history.dart';            // optional
+```
+
+| Provider                | Backend                                               |
+| ----------------------- | ----------------------------------------------------- |
+| `SolanaNativeProvider`  | Solana JSON-RPC `getSignaturesForAddress` + batched `getTransaction` |
+| `SuiNativeProvider`     | Sui JSON-RPC `sui_queryTransactionBlocks`             |
+| `EvmBlockscoutProvider` | Blockscout v2 REST (`/api/v2/addresses/.../transactions`) |
+| `EvmEtherscanProvider`  | Etherscan v1 per-chain hosts OR v2 multichain         |
+| `TronGridProvider`      | TronGrid `/v1/accounts/{addr}/transactions` and `/transactions/trc20` |
+
+Every provider exposes the same `TxHistoryProvider<T>` interface
+(`listTransactions`, `list`, `close`) and uses a sealed
+`TxHistoryCursor` hierarchy for compile-time exhaustiveness across
+chains. Providers compose the existing v1.0 clients (the Solana and
+Sui providers wrap `SolanaRpcClient` / `SuiRpcClient`; the EVM and
+Tron providers reuse the shared `EndpointPool` + `RestHistoryClient`
+primitives).
+
+Mobile guidance: each `listTransactions` carries dartdoc steering
+callers to `Isolate.run` for large pages.
+
+For testing, an opt-in **separate** barrel ships
+`MockTxHistoryProvider<T>`:
+
+```dart
+import 'package:ceres_wallet_onchain/tx_history_testing.dart'; // tests only
+```
+
+See [`example/tx_history_example.dart`](example/tx_history_example.dart)
+for one query per chain against live mainnet endpoints.
 
 ---
 

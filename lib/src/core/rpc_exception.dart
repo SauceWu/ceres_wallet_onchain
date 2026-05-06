@@ -65,20 +65,40 @@ class RpcTimeoutException extends RpcException {
 /// The [statusCode] field contains the HTTP response status code.
 /// The [code] field is set to the same value as [statusCode] for consistency.
 ///
+/// When the response includes a `Retry-After` header (RFC 7231 §7.1.3) in
+/// `delta-seconds` format, [retryAfter] is populated with the parsed value
+/// (capped at 30 seconds to guard against malicious servers stalling clients
+/// indefinitely). HTTP-date format and malformed values yield a `null`
+/// [retryAfter]; callers fall back to their default backoff strategy.
+///
 /// ```dart
 /// try {
 ///   await client.send('eth_blockNumber', []);
 /// } on RpcHttpException catch (e) {
 ///   print('HTTP ${e.statusCode}: ${e.message}');
+///   if (e.retryAfter != null) {
+///     print('Server asked us to wait ${e.retryAfter!.inSeconds}s');
+///   }
 /// }
 /// ```
 class RpcHttpException extends RpcException {
   /// The HTTP response status code (e.g., 503, 429, 404).
   final int statusCode;
 
-  /// Creates an [RpcHttpException] with the given [statusCode] and [message].
-  const RpcHttpException({required this.statusCode, required super.message})
-    : super(code: statusCode);
+  /// The server-supplied retry hint parsed from the `Retry-After` response
+  /// header, or `null` when absent, malformed, or in HTTP-date format.
+  ///
+  /// Capped at 30 seconds by the transport to guard against malicious
+  /// servers stalling clients indefinitely with a huge value.
+  final Duration? retryAfter;
+
+  /// Creates an [RpcHttpException] with the given [statusCode] and [message],
+  /// optionally including a [retryAfter] hint from the response.
+  const RpcHttpException({
+    required this.statusCode,
+    required super.message,
+    this.retryAfter,
+  }) : super(code: statusCode);
 }
 
 /// Exception thrown when the JSON-RPC response contains an `error` object.
